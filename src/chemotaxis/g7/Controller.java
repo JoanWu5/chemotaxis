@@ -88,11 +88,13 @@ public class Controller extends chemotaxis.sim.Controller {
             DirectionType nowDirection = this.getMoveDirections(location, nextPosition);
             if (nowDirection != beforeDirection) {
                 // if we make sure that the agent can turn itself, we can put no chemical
-                if (!isOppositeDirection(beforeDirection, nowDirection) && numberOfAvailableNeighbours == 2)
-                    continue;
+                if (beforeDirection != DirectionType.CURRENT) {
+                    if (!isOppositeDirection(beforeDirection, nowDirection) && numberOfAvailableNeighbours == 2)
+                        continue;
 
-                if (isOppositeDirection(beforeDirection, nowDirection) && numberOfAvailableNeighbours == 3)
-                    continue;
+                    if (isOppositeDirection(beforeDirection, nowDirection) && numberOfAvailableNeighbours == 3)
+                        continue;
+                }
 
                 if (distance > path.size() - 1) {
                     distance = path.size() - 1;

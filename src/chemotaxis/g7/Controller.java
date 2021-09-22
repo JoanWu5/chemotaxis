@@ -8,11 +8,8 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.HashMap;
 
-import chemotaxis.sim.ChemicalPlacement;
-import chemotaxis.sim.ChemicalCell;
+import chemotaxis.sim.*;
 import chemotaxis.sim.ChemicalCell.ChemicalType;
-import chemotaxis.sim.DirectionType;
-import chemotaxis.sim.SimPrinter;
 
 public class Controller extends chemotaxis.sim.Controller {
     // the directions are 4 directions which each is 1-step away from x, y and has a directionType
@@ -65,6 +62,11 @@ public class Controller extends chemotaxis.sim.Controller {
 
         for (int i = 0; i < locations.size(); i ++) {
             Point location = new Point(locations.get(i).x - 1, locations.get(i).y - 1);
+            int numberOfAvailableNeighbours = findNumberOfAvailableNeighbours(location,grid);
+            Log.writeToLogFile("Agent"+(i)+" number of available neighbours:"+numberOfAvailableNeighbours);
+            if (numberOfAvailableNeighbours == 2){
+                continue;
+            }
             if (location.x == target.x - 1 && location.y == target.y - 1)
                 continue;
 
@@ -106,6 +108,22 @@ public class Controller extends chemotaxis.sim.Controller {
         return result;
     }
 
+    public int findNumberOfAvailableNeighbours(Point currentAgent,ChemicalCell[][] grid){
+        int numberOfAvailableNeighbours = 0;
+        if (currentAgent.y+1<grid.length && grid[currentAgent.x][currentAgent.y+1].isOpen()){
+            numberOfAvailableNeighbours += 1;
+        }
+        if (currentAgent.y-1>=0 && grid[currentAgent.x][currentAgent.y-1].isOpen()){
+            numberOfAvailableNeighbours += 1;
+        }
+        if (currentAgent.x+1<grid.length && grid[currentAgent.x+1][currentAgent.y].isOpen()){
+            numberOfAvailableNeighbours += 1;
+        }
+        if (currentAgent.x-1>=0 && grid[currentAgent.x-1][currentAgent.y].isOpen()){
+            numberOfAvailableNeighbours += 1;
+        }
+        return numberOfAvailableNeighbours;
+    }
     /**
      * Apply chemicals to the map
      *

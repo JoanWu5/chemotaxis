@@ -64,9 +64,6 @@ public class Controller extends chemotaxis.sim.Controller {
             Point location = new Point(locations.get(i).x - 1, locations.get(i).y - 1);
             int numberOfAvailableNeighbours = findNumberOfAvailableNeighbours(location,grid);
             Log.writeToLogFile("Agent"+(i)+" number of available neighbours:"+numberOfAvailableNeighbours);
-            if (numberOfAvailableNeighbours == 2){
-                continue;
-            }
             if (location.x == target.x - 1 && location.y == target.y - 1)
                 continue;
 
@@ -90,6 +87,13 @@ public class Controller extends chemotaxis.sim.Controller {
             Point nextPosition = path.get(1);
             DirectionType nowDirection = this.getMoveDirections(location, nextPosition);
             if (nowDirection != beforeDirection) {
+                // if we make sure that the agent can turn itself, we can put no chemical
+                if (!isOppositeDirection(beforeDirection, nowDirection) && numberOfAvailableNeighbours == 2)
+                    continue;
+
+                if (isOppositeDirection(beforeDirection, nowDirection) && numberOfAvailableNeighbours == 3)
+                    continue;
+
                 if (distance > path.size() - 1) {
                     distance = path.size() - 1;
                     chooseIdx = i;
@@ -375,6 +379,22 @@ public class Controller extends chemotaxis.sim.Controller {
             return turnDirections.get("ATTRACT");
 
         return 0;
+    }
+
+    private boolean isOppositeDirection(DirectionType previousDirection, DirectionType nowDirection) {
+        if (previousDirection == DirectionType.WEST && nowDirection == DirectionType.EAST)
+            return true;
+
+        if (previousDirection == DirectionType.EAST && nowDirection == DirectionType.WEST)
+            return true;
+
+        if (previousDirection == DirectionType.NORTH && nowDirection == DirectionType.SOUTH)
+            return true;
+
+        if (previousDirection == DirectionType.SOUTH && nowDirection == DirectionType.NORTH)
+            return true;
+
+        return false;
     }
 
     private ArrayList<MoveDirection> sortDirections(ArrayList<MoveDirection> oldDirections,DirectionType previousDirection) {

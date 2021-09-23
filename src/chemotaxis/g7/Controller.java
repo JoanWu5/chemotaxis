@@ -8,11 +8,8 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.HashMap;
 
-import chemotaxis.sim.ChemicalPlacement;
-import chemotaxis.sim.ChemicalCell;
+import chemotaxis.sim.*;
 import chemotaxis.sim.ChemicalCell.ChemicalType;
-import chemotaxis.sim.DirectionType;
-import chemotaxis.sim.SimPrinter;
 
 public class Controller extends chemotaxis.sim.Controller {
     // the directions are 4 directions which each is 1-step away from x, y and has a directionType
@@ -45,8 +42,8 @@ public class Controller extends chemotaxis.sim.Controller {
      * @param simPrinter  simulation printer
      *
      */
-    public Controller(Point start, Point target, Integer size, ChemicalCell[][] grid, Integer simTime, Integer budget, Integer seed, SimPrinter simPrinter) {
-        super(start, target, size, grid, simTime, budget, seed, simPrinter);
+    public Controller(Point start, Point target, Integer size, ChemicalCell[][] grid, Integer simTime, Integer budget, Integer seed, SimPrinter simPrinter, Integer agentGoal, Integer spawnFreq) {
+        super(start, target, size, grid, simTime, budget, seed, simPrinter, agentGoal, spawnFreq);
     }
 
     // weigh the points, not must be the closest point to the target
@@ -65,6 +62,8 @@ public class Controller extends chemotaxis.sim.Controller {
 
         for (int i = 0; i < locations.size(); i ++) {
             Point location = new Point(locations.get(i).x - 1, locations.get(i).y - 1);
+            int numberOfAvailableNeighbours = findNumberOfAvailableNeighbours(location,grid);
+            Log.writeToLogFile("Agent"+(i)+" number of available neighbours:"+numberOfAvailableNeighbours);
             if (location.x == target.x - 1 && location.y == target.y - 1)
                 continue;
 
@@ -88,6 +87,15 @@ public class Controller extends chemotaxis.sim.Controller {
             Point nextPosition = path.get(1);
             DirectionType nowDirection = this.getMoveDirections(location, nextPosition);
             if (nowDirection != beforeDirection) {
+                // if we make sure that the agent can turn itself, we can put no chemical
+                if (beforeDirection != DirectionType.CURRENT) {
+                    if (!isOppositeDirection(beforeDirection, nowDirection) && numberOfAvailableNeighbours == 2)
+                        continue;
+
+                    if (isOppositeDirection(beforeDirection, nowDirection) && numberOfAvailableNeighbours == 3)
+                        continue;
+                }
+
                 if (distance > path.size() - 1) {
                     distance = path.size() - 1;
                     chooseIdx = i;
@@ -104,6 +112,24 @@ public class Controller extends chemotaxis.sim.Controller {
             result.add(nextY);
         }
         return result;
+    }
+
+
+    public int findNumberOfAvailableNeighbours(Point currentAgent,ChemicalCell[][] grid){
+        int numberOfAvailableNeighbours = 0;
+        if (currentAgent.y+1<grid.length && grid[currentAgent.x][currentAgent.y+1].isOpen()){
+            numberOfAvailableNeighbours += 1;
+        }
+        if (currentAgent.y-1>=0 && grid[currentAgent.x][currentAgent.y-1].isOpen()){
+            numberOfAvailableNeighbours += 1;
+        }
+        if (currentAgent.x+1<grid.length && grid[currentAgent.x+1][currentAgent.y].isOpen()){
+            numberOfAvailableNeighbours += 1;
+        }
+        if (currentAgent.x-1>=0 && grid[currentAgent.x-1][currentAgent.y].isOpen()){
+            numberOfAvailableNeighbours += 1;
+        }
+        return numberOfAvailableNeighbours;
     }
 
     /**
@@ -358,6 +384,23 @@ public class Controller extends chemotaxis.sim.Controller {
 
         return 0;
     }
+
+    private boolean isOppositeDirection(DirectionType previousDirection, DirectionType nowDirection) {
+        if (previousDirection == DirectionType.WEST && nowDirection == DirectionType.EAST)
+            return true;
+
+        if (previousDirection == DirectionType.EAST && nowDirection == DirectionType.WEST)
+            return true;
+
+        if (previousDirection == DirectionType.NORTH && nowDirection == DirectionType.SOUTH)
+            return true;
+
+        if (previousDirection == DirectionType.SOUTH && nowDirection == DirectionType.NORTH)
+            return true;
+
+        return false;
+    }
+
 
     private ArrayList<MoveDirection> sortDirections(ArrayList<MoveDirection> oldDirections,DirectionType previousDirection) {
         ArrayList<MoveDirection> newDirections = new ArrayList<MoveDirection>();

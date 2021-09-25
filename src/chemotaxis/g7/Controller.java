@@ -1,6 +1,7 @@
 package chemotaxis.g7;
 
 import java.awt.Point;
+import java.util.Collections;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Queue;
@@ -14,6 +15,7 @@ import chemotaxis.sim.ChemicalCell.ChemicalType;
 public class Controller extends chemotaxis.sim.Controller {
     // the directions are 4 directions which each is 1-step away from x, y and has a directionType
     public static final ArrayList<MoveDirection> directions = new ArrayList<MoveDirection>();
+
     static {
         directions.add(new MoveDirection(0, 1, DirectionType.EAST));
         directions.add(new MoveDirection(0, -1, DirectionType.WEST));
@@ -22,6 +24,7 @@ public class Controller extends chemotaxis.sim.Controller {
     }
 
     public static final Map<String, Integer> turnDirections = new HashMap<>();
+
     static {
         turnDirections.put("LEFT", 1);
         turnDirections.put("RIGHT", 2);
@@ -30,20 +33,20 @@ public class Controller extends chemotaxis.sim.Controller {
     }
 
     ArrayList<Point> previousLocations = new ArrayList<Point>();
-    Map<Integer, Node>agentsPath = new HashMap<>();
+    Map<Integer, Node> agentsPath = new HashMap<>();
     Node initialPath = new Node();
+
     /**
      * Controller constructor
      *
-     * @param start       start cell coordinates
-     * @param target      target cell coordinates
-     * @param size     	  grid/map size
-     * @param grid        game grid/map
-     * @param simTime     simulation time
-     * @param budget      chemical budget
-     * @param seed        random seed
-     * @param simPrinter  simulation printer
-     *
+     * @param start      start cell coordinates
+     * @param target     target cell coordinates
+     * @param size       grid/map size
+     * @param grid       game grid/map
+     * @param simTime    simulation time
+     * @param budget     chemical budget
+     * @param seed       random seed
+     * @param simPrinter simulation printer
      */
     public Controller(Point start, Point target, Integer size, ChemicalCell[][] grid, Integer simTime, Integer budget, Integer seed, SimPrinter simPrinter, Integer agentGoal, Integer spawnFreq) {
         super(start, target, size, grid, simTime, budget, seed, simPrinter, agentGoal, spawnFreq);
@@ -68,11 +71,12 @@ public class Controller extends chemotaxis.sim.Controller {
         int nextY = -1;
 
         ArrayList<Integer> result = new ArrayList<Integer>();
+        Map<Point, Integer> agentTurnDirections = new HashMap<>();
 
-        for (int i = 0; i < locations.size(); i ++) {
+        for (int i = 0; i < locations.size(); i++) {
             Point location = new Point(locations.get(i).x - 1, locations.get(i).y - 1);
-            int numberOfAvailableNeighbours = findNumberOfAvailableNeighbours(location,grid);
-            Log.writeToLogFile("Agent"+(i)+" number of available neighbours:"+numberOfAvailableNeighbours);
+            int numberOfAvailableNeighbours = findNumberOfAvailableNeighbours(location, grid);
+            Log.writeToLogFile("Agent" + (i) + " number of available neighbours:" + numberOfAvailableNeighbours);
 
             // get expected path from agentPaths
             Node beforeNode = new Node();
@@ -87,6 +91,9 @@ public class Controller extends chemotaxis.sim.Controller {
                 if (location.x == start.x - 1 || location.y == start.y - 1) {
                     agentsPath.put(i, new Node(initialPath));
                     beforeNode = agentsPath.get(i);
+                    if (beforeNode.getIndex() != -1) {
+                        beforeNode.setIndex(-1);
+                    }
                 } else {
                     System.out.println("agentpath: some errors here! need debug");
                 }
@@ -101,7 +108,6 @@ public class Controller extends chemotaxis.sim.Controller {
             if (location.x != start.x - 1 || location.y != start.y - 1) {
                 Point previousLocation = expectPath.get(beforeIndex);
                 beforeDirection = this.getMoveDirections(previousLocation, location);
-
             }
 
             Point nextPosition = new Point();
@@ -119,7 +125,7 @@ public class Controller extends chemotaxis.sim.Controller {
                 ArrayList<Point> path = node.getPath();
                 nextPosition = path.get(1);
                 System.out.println("agent" + String.valueOf(i) + "go unexpected way, now location:" + location.toString());
-                System.out.println("now position index:"+ String.valueOf(beforeIndex + 1) + ",expected:" + expectPath.toString());
+                System.out.println("now position index:" + String.valueOf(beforeIndex + 1) + ",expected:" + expectPath.toString());
                 System.out.println("new path:" + path.toString());
                 ArrayList<Point> newPath = new ArrayList<Point>(expectPath.subList(0, beforeIndex + 1));
                 newPath.addAll(path);
@@ -130,9 +136,37 @@ public class Controller extends chemotaxis.sim.Controller {
             agentsPath.put(i, beforeNode);
 
             DirectionType nowDirection = this.getMoveDirections(location, nextPosition);
-            if (nowDirection != beforeDirection) {
-                // if we make sure that the agent can turn itself, we can put no chemical
+
+            // if agent in the start position,
+            // make sure applying a nearby blue chemical won't affect the agent in the cell if there is an agent here
+            if (location.x == start.x - 1 || location.y == start.y - 1) {
+                Point anotherAgent = new Point(nextPosition.x + 1, nextPosition.y + 1);
+                if (locations.contains(anotherAgent)) {
+                    int intendTurnDirection = this.getIntendTurnDirection(grid, nextPosition, nowDirection);
+                    if (agentTurnDirections.containsKey(nextPosition)) {
+                        int anotherAgentIntendTurnDirection = agentTurnDirections.get(nextPosition);
+                        if (intendTurnDirection != anotherAgentIntendTurnDirection) {
+                            continue;
+                        }
+                    } else {
+                        // debug
+                        System.out.println("an agent next to a start agent doesn't in the agentTurnDirections");
+                        System.out.println(agentTurnDirections.toString());
+                    }
+                }
+            }
+
+            int intendTurnDirection = this.getIntendTurnDirection(grid, location, beforeDirection);
+            int supposeTurnDirection = this.getChemicalType(beforeDirection, nowDirection);
+
+            if (nowDirection == beforeDirection) {
+                if (intendTurnDirection != 0) {
+                    System.out.println("agent" + String.valueOf(i) + "should go" + String.valueOf(supposeTurnDirection));
+                    System.out.println("but it intend to go" + String.valueOf(intendTurnDirection));
+                }
+            } else {
                 if (beforeDirection != DirectionType.CURRENT) {
+                    // if we make sure that the agent can turn itself, we can put no chemical
                     if (!isOppositeDirection(beforeDirection, nowDirection) && numberOfAvailableNeighbours == 2)
                         continue;
 
@@ -140,10 +174,14 @@ public class Controller extends chemotaxis.sim.Controller {
                         continue;
                 }
 
-                if (distance > distanceToTarget - 1) {
-                    distance = distanceToTarget - 1;
+                if (intendTurnDirection == supposeTurnDirection) {
+                    continue;
+                }
+
+                if (distance > distanceToTarget) {
+                    distance = distanceToTarget;
                     chooseIdx = i;
-                    turnDirection = this.getChemicalType(beforeDirection, nowDirection);
+                    turnDirection = supposeTurnDirection;
                     nextX = nextPosition.x + 1;
                     nextY = nextPosition.y + 1;
                 }
@@ -158,34 +196,34 @@ public class Controller extends chemotaxis.sim.Controller {
         return result;
     }
 
-    public int findNumberOfAvailableNeighbours(Point currentAgent,ChemicalCell[][] grid){
+    public int findNumberOfAvailableNeighbours(Point currentAgent, ChemicalCell[][] grid) {
         int numberOfAvailableNeighbours = 0;
         int m = grid.length;
         int n = grid[0].length;
 
-        if (currentAgent.y + 1 < n && grid[currentAgent.x][currentAgent.y + 1].isOpen()){
+        if (currentAgent.y + 1 < n && grid[currentAgent.x][currentAgent.y + 1].isOpen()) {
             numberOfAvailableNeighbours += 1;
         }
-        if (currentAgent.y - 1 >= 0 && grid[currentAgent.x][currentAgent.y - 1].isOpen()){
+        if (currentAgent.y - 1 >= 0 && grid[currentAgent.x][currentAgent.y - 1].isOpen()) {
             numberOfAvailableNeighbours += 1;
         }
-        if (currentAgent.x + 1 < m && grid[currentAgent.x + 1][currentAgent.y].isOpen()){
+        if (currentAgent.x + 1 < m && grid[currentAgent.x + 1][currentAgent.y].isOpen()) {
             numberOfAvailableNeighbours += 1;
         }
-        if (currentAgent.x - 1 >=  0 && grid[currentAgent.x - 1][currentAgent.y].isOpen()){
+        if (currentAgent.x - 1 >= 0 && grid[currentAgent.x - 1][currentAgent.y].isOpen()) {
             numberOfAvailableNeighbours += 1;
         }
         return numberOfAvailableNeighbours;
     }
+
     /**
      * Apply chemicals to the map
      *
-     * @param currentTurn         current turn in the simulation
-     * @param chemicalsRemaining  number of chemicals remaining
-     * @param locations     current locations of the agents
-     * @param grid                game grid/map
-     * @return                    a cell location and list of chemicals to apply
-     *
+     * @param currentTurn        current turn in the simulation
+     * @param chemicalsRemaining number of chemicals remaining
+     * @param locations          current locations of the agents
+     * @param grid               game grid/map
+     * @return a cell location and list of chemicals to apply
      */
     // choose one point and put the chemicals(G:left, R:right, B:attract/opposite) to guide it
     // In the beginning, we use blue in the nearby cell to guide the agent in the right direction
@@ -419,15 +457,16 @@ public class Controller extends chemotaxis.sim.Controller {
     }
 
     public DirectionType getMoveDirections(Point previousLocation, Point currentLocation) {
-        for (MoveDirection moveDirection: directions) {
+        for (MoveDirection moveDirection : directions) {
             int dx = moveDirection.dx;
             int dy = moveDirection.dy;
             if (currentLocation.x - previousLocation.x == dx && currentLocation.y - previousLocation.y == dy) {
                 return moveDirection.directionType;
             }
         }
-        // used to debug
+        // debug
         if (previousLocation.x != currentLocation.x || previousLocation.y != currentLocation.y) {
+            System.out.println("getMoveDirections some errors here, need debug");
             System.out.println(previousLocation);
             System.out.println(currentLocation);
         }
@@ -494,7 +533,7 @@ public class Controller extends chemotaxis.sim.Controller {
         return false;
     }
 
-    private ArrayList<MoveDirection> sortDirections(ArrayList<MoveDirection> oldDirections,DirectionType previousDirection) {
+    private ArrayList<MoveDirection> sortDirections(ArrayList<MoveDirection> oldDirections, DirectionType previousDirection) {
         ArrayList<MoveDirection> newDirections = new ArrayList<MoveDirection>();
         for (MoveDirection moveDirection : oldDirections) {
             if (moveDirection.directionType == previousDirection)
@@ -505,5 +544,99 @@ public class Controller extends chemotaxis.sim.Controller {
         }
         return newDirections;
     }
+
+    // return an array contains whether green/red/blue is local maximum
+    private Integer getIntendTurnDirection(ChemicalCell[][] grid, Point currentPosition, DirectionType beforeDirection) {
+        ArrayList<ChemicalType> chemicals = new ArrayList<ChemicalType>();
+        ChemicalCell currentCell;
+        int numberOfColors = 3;
+
+        // row: green/red/blue in the beforeDirection: col: previousPosition->currentPosition->nextPosition
+        ArrayList<ArrayList<Double>> chemicalConcentrations = new ArrayList<ArrayList<Double>>();
+
+        // initial result
+        for (int i = 0; i < numberOfColors; i++) {
+            chemicalConcentrations.add(new ArrayList<Double>());
+        }
+        chemicals.add(ChemicalType.GREEN);
+        chemicals.add(ChemicalType.RED);
+        chemicals.add(ChemicalType.BLUE);
+
+
+        int dx = 0;
+        int dy = 0;
+
+        for (MoveDirection direction : directions) {
+            if (direction.directionType == beforeDirection) {
+                dx = direction.dx;
+                dy = direction.dy;
+                break;
+            }
+        }
+        int m = grid.length;
+        int n = grid[0].length;
+
+        int newX = currentPosition.x;
+        int newY = currentPosition.y;
+        for (int i = 0; i < numberOfColors; i++) {
+            if (i == 1) {
+                newX = currentPosition.x + dx;
+                newY = currentPosition.y + dy;
+            } else if (i == 2) {
+                newX = currentPosition.x - dx;
+                newY = currentPosition.y - dy;
+            }
+            for (int j = 0; j < numberOfColors; j++) {
+                double concentration = 0;
+                if (newX >= 0 && newX < m && newY >= 0 && newY < n){
+                    currentCell = grid[newX][newY];
+                    concentration = currentCell.getConcentration(chemicals.get(j));
+                    if (concentration < 0.001) {
+                        concentration = 0;
+                    }
+                }
+                ArrayList<Double> colorChemical = chemicalConcentrations.get(j);
+                colorChemical.add(concentration);
+                chemicalConcentrations.set(j, colorChemical);
+            }
+        }
+
+        ArrayList<Double> maxLocal = new ArrayList<Double>();
+        int color = 0;
+        int equal = 0;
+
+        for (int i = 0; i < numberOfColors; i++) {
+            ArrayList<Double> colorChemical = chemicalConcentrations.get(i);
+            double maxConcentration = Collections.max(colorChemical);
+            if (maxConcentration != colorChemical.get(0)) {
+                maxLocal.add((double) 0);
+            } else {
+                maxLocal.add(maxConcentration);
+            }
+        }
+
+        // if three/two chemicals are local maximum and have equal concentration, it means agent keep-moving, or it should follow the highest chemical
+        double maxColorConcentration = Collections.max(maxLocal);
+        for (int i = 0; i < numberOfColors; i++) {
+            if (maxLocal.get(i) == (double) 0) {
+                continue;
+            }
+            if (maxColorConcentration == maxLocal.get(i)) {
+                color = i + 1;
+                equal++;
+            }
+        }
+
+        // keep-moving
+        if (equal == 0 || equal >= 2) {
+            return 0;
+        }
+
+        if (beforeDirection == DirectionType.CURRENT && color == 3) {
+            color = 4;
+        }
+        return color;
+    }
+
 }
 

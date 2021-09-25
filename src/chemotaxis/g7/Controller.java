@@ -25,7 +25,8 @@ public class Controller extends chemotaxis.sim.Controller {
     static {
         turnDirections.put("LEFT", 1);
         turnDirections.put("RIGHT", 2);
-        turnDirections.put("ATTRACT", 3);
+        turnDirections.put("OPPOSITE", 3);
+        turnDirections.put("ATTRACT", 4);
     }
 
     ArrayList<Point> previousLocations = new ArrayList<Point>();
@@ -186,10 +187,11 @@ public class Controller extends chemotaxis.sim.Controller {
      * @return                    a cell location and list of chemicals to apply
      *
      */
-    // choose one point and put the chemicals(G:left, R:right, B:attract) to guide it
-    // In the beginning, we use blue to guide the agent in the right direction, in the further process, we use G/R to guide it
+    // choose one point and put the chemicals(G:left, R:right, B:attract/opposite) to guide it
+    // In the beginning, we use blue in the nearby cell to guide the agent in the right direction
+    // in the further process, we use G/R/B in the agent cell itself to guide it turn left/right/opposite
     // As a result, for the agent which is at the start point, the priority is B > G = R
-    // in the afterwards, the priority is G = R > B
+    // in the afterwards, we should decide which concentration is the most, then follow the chemical rule
     @Override
     public ChemicalPlacement applyChemicals(Integer currentTurn, Integer chemicalsRemaining, ArrayList<Point> locations, ChemicalCell[][] grid) {
         ChemicalPlacement chemicalPlacement = new ChemicalPlacement();
@@ -218,8 +220,11 @@ public class Controller extends chemotaxis.sim.Controller {
                 chemicals.add(ChemicalCell.ChemicalType.RED);
                 chemicalPlacement.location = new Point(nowLocation.x, nowLocation.y);
                 break;
-
             case 3:
+                chemicals.add(ChemicalCell.ChemicalType.BLUE);
+                chemicalPlacement.location = new Point(nowLocation.x, nowLocation.y);
+                break;
+            case 4:
                 chemicals.add(ChemicalCell.ChemicalType.BLUE);
                 chemicalPlacement.location = new Point(nextX, nextY);
                 break;
@@ -429,7 +434,7 @@ public class Controller extends chemotaxis.sim.Controller {
         return DirectionType.CURRENT;
     }
 
-    // Green: left: 1, Red: right: 2, Blue: attract : 3
+    // Green: left -> 1, Red: right -> 2, Blue: go opposite -> 3, Blue: attract(means from stopped to move) -> 4
     public int getChemicalType(DirectionType previousDirection, DirectionType nowDirection) {
         if (previousDirection == DirectionType.NORTH && nowDirection == DirectionType.WEST)
             return turnDirections.get("LEFT");
@@ -456,16 +461,16 @@ public class Controller extends chemotaxis.sim.Controller {
             return turnDirections.get("RIGHT");
 
         if (previousDirection == DirectionType.EAST && nowDirection == DirectionType.WEST)
-            return turnDirections.get("ATTRACT");
+            return turnDirections.get("OPPOSITE");
 
         if (previousDirection == DirectionType.WEST && nowDirection == DirectionType.EAST)
-            return turnDirections.get("ATTRACT");
+            return turnDirections.get("OPPOSITE");
 
         if (previousDirection == DirectionType.SOUTH && nowDirection == DirectionType.NORTH)
-            return turnDirections.get("ATTRACT");
+            return turnDirections.get("OPPOSITE");
 
         if (previousDirection == DirectionType.NORTH && nowDirection == DirectionType.SOUTH)
-            return turnDirections.get("ATTRACT");
+            return turnDirections.get("OPPOSITE");
 
         if (previousDirection == DirectionType.CURRENT && nowDirection != DirectionType.CURRENT)
             return turnDirections.get("ATTRACT");

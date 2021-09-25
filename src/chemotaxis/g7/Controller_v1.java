@@ -11,7 +11,7 @@ import java.util.HashMap;
 import chemotaxis.sim.*;
 import chemotaxis.sim.ChemicalCell.ChemicalType;
 
-public class Controller extends chemotaxis.sim.Controller {
+public class Controller_v1 extends chemotaxis.sim.Controller {
     // the directions are 4 directions which each is 1-step away from x, y and has a directionType
     public static final ArrayList<MoveDirection> directions = new ArrayList<MoveDirection>();
     static {
@@ -44,7 +44,7 @@ public class Controller extends chemotaxis.sim.Controller {
      * @param simPrinter  simulation printer
      *
      */
-    public Controller(Point start, Point target, Integer size, ChemicalCell[][] grid, Integer simTime, Integer budget, Integer seed, SimPrinter simPrinter, Integer agentGoal, Integer spawnFreq) {
+    public Controller_v1(Point start, Point target, Integer size, ChemicalCell[][] grid, Integer simTime, Integer budget, Integer seed, SimPrinter simPrinter, Integer agentGoal, Integer spawnFreq) {
         super(start, target, size, grid, simTime, budget, seed, simPrinter, agentGoal, spawnFreq);
         this.initialAgentPath();
     }

@@ -13,15 +13,12 @@ import chemotaxis.sim.ChemicalCell.ChemicalType;
 import chemotaxis.sim.SimPrinter;
 
 public class Controller extends chemotaxis.sim.Controller {
-<<<<<<< HEAD
-
-=======
 	List<Point> shortestPathList;
 	private int incrementBy;
 	private int colorCounter = 0;
 	private int currentPathIndex = 1;
 	private int idealChemicalIncrement = 10;
->>>>>>> griff4692-master
+
 	/**
 	 * Controller constructor
 	 *
@@ -35,15 +32,11 @@ public class Controller extends chemotaxis.sim.Controller {
 	 * @param simPrinter  simulation printer
 	 *
 	 */
-<<<<<<< HEAD
-	public Controller(Point start, Point target, Integer size, ChemicalCell[][] grid, Integer simTime, Integer budget, Integer seed, SimPrinter simPrinter) {
-		super(start, target, size, grid, simTime, budget, seed, simPrinter);
-=======
+
 	public Controller(Point start, Point target, Integer size, ChemicalCell[][] grid, Integer simTime, Integer budget, Integer seed, SimPrinter simPrinter, Integer agentGoal, Integer spawnFreq) {
 		super(start, target, size, grid, simTime, budget, seed, simPrinter, agentGoal, spawnFreq);
 		this.shortestPathList = shortestPath(grid);	
 		this.incrementBy = decidePlacementStrategy(this.shortestPathList, idealChemicalIncrement, budget);
->>>>>>> griff4692-master
 	}
 	
 	// will this need to keep track of simTime?

@@ -29,7 +29,8 @@ public class Agent extends chemotaxis.sim.Agent {
      * @param randomNum        random number available for agents
      * @param previousState    byte of previous state, bits 2-5 are a counter of the #rounds
      *                         the agent hasn't seen a 1.0 chemical in his cell, last 2 bits store the previous
-     *                         direction (00: NORTH, 01: EAST, 10: SOUTH, 11: WEST)
+     *                         direction (00: NORTH, 01: EAST, 10: SOUTH, 11: WEST), bit 7 will indicate whether the
+     *                         agent has started moving in the right direction or not
      * @param currentCell      current cell
      * @param neighborMap      map of cell's neighbors
      * @return                 agent move
@@ -91,8 +92,20 @@ public class Agent extends chemotaxis.sim.Agent {
         /**
          * get the number of rounds the agent hasn't been guided by the controller
          */
-        int previousRoundsCounter = (previousState / 4) % 32;
+        int previousRoundsCounter = (previousState & ((byte) (124))) / 4;
         return previousRoundsCounter;
+    }
+
+    private Integer getRandomWalkBit(Byte previousState) {
+        /**
+         * get the first bit of the state
+         */
+        if (previousState < 0) {
+            return 1;
+        }
+        else {
+            return 0;
+        }
     }
 
     private byte setDirectionBitsInCurrentState(Byte previousState, DirectionType newDirection) {
@@ -100,6 +113,7 @@ public class Agent extends chemotaxis.sim.Agent {
          * update last 2 bits of the state to indicate the new direction of the agent
          */
         byte previousDirectionBits = (byte) (previousState % 4);
+        previousState = (byte) (previousState & ((byte) (127)));
         byte newDirectionBits = 0;
         if (newDirection == DirectionType.NORTH) {
             newDirectionBits = 0;
@@ -114,6 +128,7 @@ public class Agent extends chemotaxis.sim.Agent {
             newDirectionBits = 3;
         }
         byte newState = (byte) (previousState - previousDirectionBits + newDirectionBits);
+        newState = (byte) (newState | (-128));
         return newState;
     }
 
@@ -122,6 +137,7 @@ public class Agent extends chemotaxis.sim.Agent {
          * update the counter stored in the state to keep track of the #rounds the agent hasn't sensed chemicals
          */
         int previousCounter = getRoundsCounter(previousState);
+        previousState = (byte) (previousState & ((byte) (127)));
         byte newState = previousState;
         if (increase) {
             if (previousCounter < 31) {
@@ -134,6 +150,16 @@ public class Agent extends chemotaxis.sim.Agent {
         else {
             newState = (byte) (previousState + 4 - (byte) (previousCounter * 4));
         }
+        newState = (byte) (newState | (-128));
+        return newState;
+    }
+
+    private byte setRandomWalkBitInCurrentState(Byte previousState) {
+        /**
+         * update the first bit stored in the state so that the agent knows whether he has started moving to the right
+         * direction after leaving starting point
+         */
+        byte newState = (byte) (previousState | (-128));
         return newState;
     }
 
@@ -200,65 +226,103 @@ public class Agent extends chemotaxis.sim.Agent {
 
     @Override
     public Move makeMove(Integer randomNum, Byte previousState, ChemicalCell currentCell, Map<DirectionType, ChemicalCell> neighborMap) {
-        /**
-         * Next move functionality (order indicates priority of each scenario):
-         * - if there is red chemical in the current block then turn right
-         * - if there is green chemical in the current block then turn left
-         * - if there is blue chemical in one of the neighboring cells then move to that direction
-         * - if there is no chemical continue moving to the same direction unless
-         *      1) the next cell is blocked, in that case use default behavior to circumvent blocks
-         *      2) the agent hasn't sensed any chemical in 31 rounds, in that case the agent should do random steps till
-         *         he senses a chemical
-         */
 
         Move move = new Move();
         DirectionType previousDirection = getPrevDirection(previousState);
 
         boolean sensedChemical = false;
 
-        if (currentCell.getConcentration(ChemicalType.RED) == 1.0) {
-            DirectionType newDirection = getOtherDirectionList(previousDirection).get(0);
-            move.currentState = setCounterInCurrentState(previousState, false);
-            move.currentState = setDirectionBitsInCurrentState(move.currentState, newDirection);
-            move.directionType = newDirection;
-            sensedChemical = true;
-        }
-        else if (currentCell.getConcentration(ChemicalType.GREEN) == 1.0) {
-            DirectionType newDirection = getOtherDirectionList(previousDirection).get(1);
-            move.currentState = setCounterInCurrentState(previousState, false);
-            move.currentState = setDirectionBitsInCurrentState(move.currentState, newDirection);
-            move.directionType = newDirection;
-            sensedChemical = true;
-        }
-        else if (sensedChemical == false) {
+        if (getRandomWalkBit(previousState) == 0) {
+            System.out.println("BIT IS O!!!");
+            double maxConcentration = 0.0;
+            DirectionType maxConcentrationDirection = previousDirection;
             for (DirectionType directionType : neighborMap.keySet()) {
-                if (neighborMap.get(directionType).getConcentration(ChemicalType.BLUE) == 1.0) {
+                if (neighborMap.get(directionType).getConcentration(ChemicalType.BLUE) > maxConcentration) {
+                    maxConcentration = neighborMap.get(directionType).getConcentration(ChemicalType.BLUE);
+                    maxConcentrationDirection = directionType;
+                }
+            }
+            if (maxConcentration > 0.001) {
+                move.currentState = setRandomWalkBitInCurrentState(previousState);
+                move.currentState = setDirectionBitsInCurrentState(move.currentState, maxConcentrationDirection);
+                move.currentState = setCounterInCurrentState(move.currentState, false);
+                move.directionType = maxConcentrationDirection;
+                sensedChemical = true;
+            }
+            if (sensedChemical == false) {
+                move.directionType = randomStep(randomNum, previousState, currentCell, neighborMap);
+                move.currentState = setRandomWalkBitInCurrentState(previousState);
+                move.currentState = setDirectionBitsInCurrentState(move.currentState, move.directionType);
+            }
+        }
+        else {
+            if (currentCell.getConcentration(ChemicalType.BLUE) == 1.0) {
+                System.out.println(("BLUE is 1"));
+                DirectionType newDirection = getOtherDirectionList(previousDirection).get(2);
+                move.currentState = setCounterInCurrentState(previousState, false);
+                move.currentState = setDirectionBitsInCurrentState(move.currentState, newDirection);
+                move.directionType = newDirection;
+                sensedChemical = true;
+            } else {
+                double redConcentration = 0.0;
+                double greenConcentration = 0.0;
+
+                if (currentCell.getConcentration(ChemicalType.RED) > 0.001 &&
+                        currentCell.getConcentration(ChemicalType.RED) >= neighborMap.get(previousDirection).getConcentration(ChemicalType.RED) &&
+                        currentCell.getConcentration(ChemicalType.RED) >= neighborMap.get(getOtherDirectionList(previousDirection).get(2)).getConcentration(ChemicalType.RED)) {
+                    redConcentration = currentCell.getConcentration(ChemicalType.RED);
+                }
+
+                if (currentCell.getConcentration(ChemicalType.GREEN) > 0.001 &&
+                        currentCell.getConcentration(ChemicalType.GREEN) >= neighborMap.get(previousDirection).getConcentration(ChemicalType.GREEN) &&
+                        currentCell.getConcentration(ChemicalType.GREEN) >= neighborMap.get(getOtherDirectionList(previousDirection).get(2)).getConcentration(ChemicalType.GREEN)) {
+                    greenConcentration = currentCell.getConcentration(ChemicalType.GREEN);
+                }
+
+                if (redConcentration > greenConcentration) {
+                    System.out.println(("RED CONC"));
+                    DirectionType newDirection = getOtherDirectionList(previousDirection).get(0);
                     move.currentState = setCounterInCurrentState(previousState, false);
-                    move.currentState = setDirectionBitsInCurrentState(move.currentState, directionType);
-                    move.directionType = directionType;
+                    move.currentState = setDirectionBitsInCurrentState(move.currentState, newDirection);
+                    move.directionType = newDirection;
+                    sensedChemical = true;
+                } else if (redConcentration < greenConcentration) {
+                    System.out.println(("GREEN CONC"));
+                    DirectionType newDirection = getOtherDirectionList(previousDirection).get(1);
+                    move.currentState = setCounterInCurrentState(previousState, false);
+                    move.currentState = setDirectionBitsInCurrentState(move.currentState, newDirection);
+                    move.directionType = newDirection;
                     sensedChemical = true;
                 }
             }
-        }
 
-        if (sensedChemical == false) {
-            int rounds = getRoundsCounter(previousState);
-            if (rounds == 0) {
-                move.directionType = randomStep(randomNum, previousState, currentCell, neighborMap);
-                move.currentState = setDirectionBitsInCurrentState(previousState, move.directionType);
-            }
-            else if (rounds <= 31) {
-                ChemicalCell nextChemicalCell = neighborMap.get(previousDirection);
-                if (nextChemicalCell.isBlocked()) {
-                    move.directionType = circumventBlocks(previousState, currentCell, neighborMap);
+            if (sensedChemical == false) {
+                int rounds = getRoundsCounter(previousState);
+                if (rounds == 0) {
+                    move.directionType = randomStep(randomNum, previousState, currentCell, neighborMap);
+                    move.currentState = setDirectionBitsInCurrentState(previousState, move.directionType);
+                } else if (rounds <= 31) {
+                    ChemicalCell nextChemicalCell = neighborMap.get(previousDirection);
+                    if (nextChemicalCell.isBlocked()) {
+                        move.directionType = circumventBlocks(previousState, currentCell, neighborMap);
+                        move.currentState = setDirectionBitsInCurrentState(previousState, move.directionType);
+                        boolean shouldIncreaseCounter = true;
+                        if (move.directionType == getOtherDirectionList(previousDirection).get(2)) {
+                            shouldIncreaseCounter = false;
+                        }
+                        else if (move.directionType != getOtherDirectionList(previousDirection).get(2) && (getPossibleDirections(neighborMap).size() == 2)) {
+                            shouldIncreaseCounter = false;
+                        }
+                        if (shouldIncreaseCounter) {
+                            move.currentState = setCounterInCurrentState(move.currentState, true);
+                        }
+                    } else {
+                        move.directionType = previousDirection;
+                        move.currentState = setCounterInCurrentState(previousState, true);
+                        move.currentState = setDirectionBitsInCurrentState(move.currentState, move.directionType);
+                    }
                 }
-                else {
-                    move.directionType = previousDirection;
-                }
-                move.currentState = setCounterInCurrentState(previousState, true);
-                move.currentState = setDirectionBitsInCurrentState(move.currentState, move.directionType);
             }
-
         }
 
         return move;

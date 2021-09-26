@@ -283,62 +283,75 @@ public class Agent extends chemotaxis.sim.Agent {
             }
         }
         else {
-            if (currentCell.getConcentration(ChemicalType.BLUE) == 1.0) {
-                System.out.println("Blue is 1.0 at agent's cell");
-                DirectionType newDirection = getOtherDirectionList(previousDirection).get(2);
+            double redConcentration = 0.0;
+            double greenConcentration = 0.0;
+            double blueConcentration = 0.0;
+
+            if (currentCell.getConcentration(ChemicalType.BLUE) > 0.001 &&
+                    currentCell.getConcentration(ChemicalType.BLUE) > neighborMap.get(previousDirection).getConcentration(ChemicalType.BLUE) &&
+                    currentCell.getConcentration(ChemicalType.BLUE) > neighborMap.get(getOtherDirectionList(previousDirection).get(2)).getConcentration(ChemicalType.BLUE)) {
+                blueConcentration = currentCell.getConcentration(ChemicalType.BLUE);
+            }
+
+            if (currentCell.getConcentration(ChemicalType.RED) > 0.001 &&
+                    currentCell.getConcentration(ChemicalType.RED) > neighborMap.get(previousDirection).getConcentration(ChemicalType.RED) &&
+                    currentCell.getConcentration(ChemicalType.RED) > neighborMap.get(getOtherDirectionList(previousDirection).get(2)).getConcentration(ChemicalType.RED)) {
+                redConcentration = currentCell.getConcentration(ChemicalType.RED);
+            }
+
+            if (currentCell.getConcentration(ChemicalType.GREEN) > 0.001 &&
+                    currentCell.getConcentration(ChemicalType.GREEN) > neighborMap.get(previousDirection).getConcentration(ChemicalType.GREEN) &&
+                    currentCell.getConcentration(ChemicalType.GREEN) > neighborMap.get(getOtherDirectionList(previousDirection).get(2)).getConcentration(ChemicalType.GREEN)) {
+                greenConcentration = currentCell.getConcentration(ChemicalType.GREEN);
+            }
+
+            if (redConcentration > greenConcentration && redConcentration > blueConcentration) {
+                System.out.println("red local maximum");
+                System.out.println(redConcentration);
+                System.out.println(greenConcentration);
+                System.out.println(blueConcentration);
+                System.out.println("previous Direction:" + previousDirection.toString());
+                DirectionType newDirection = getOtherDirectionList(previousDirection).get(0);
+                System.out.println("newDirection:" + newDirection.toString());
+                ChemicalCell nextChemicalCell = neighborMap.get(newDirection);
+                if (nextChemicalCell.isBlocked()) {
+                    System.out.println("next cell is blocked");
+                    newDirection = circumventBlocks(previousState, currentCell, neighborMap);
+                }
                 move.currentState = setCounterInCurrentState(previousState, false);
                 move.currentState = setDirectionBitsInCurrentState(move.currentState, newDirection);
                 move.directionType = newDirection;
                 sensedChemical = true;
-            } else {
-                double redConcentration = 0.0;
-                double greenConcentration = 0.0;
-
-                if (currentCell.getConcentration(ChemicalType.RED) > 0.001 &&
-                        currentCell.getConcentration(ChemicalType.RED) > neighborMap.get(previousDirection).getConcentration(ChemicalType.RED) &&
-                        currentCell.getConcentration(ChemicalType.RED) > neighborMap.get(getOtherDirectionList(previousDirection).get(2)).getConcentration(ChemicalType.RED)) {
-                    redConcentration = currentCell.getConcentration(ChemicalType.RED);
+            } else if (greenConcentration > redConcentration && greenConcentration > blueConcentration) {
+                System.out.println("green local maximum");
+                System.out.println(redConcentration);
+                System.out.println(greenConcentration);
+                System.out.println(blueConcentration);
+                System.out.println("previous Direction:" + previousDirection.toString());
+                DirectionType newDirection = getOtherDirectionList(previousDirection).get(1);
+                System.out.println("newDirection:" + newDirection.toString());
+                ChemicalCell nextChemicalCell = neighborMap.get(newDirection);
+                if (nextChemicalCell.isBlocked()) {
+                    System.out.println("next cell is blocked");
+                    newDirection = circumventBlocks(previousState, currentCell, neighborMap);
                 }
-
-                if (currentCell.getConcentration(ChemicalType.GREEN) > 0.001 &&
-                        currentCell.getConcentration(ChemicalType.GREEN) > neighborMap.get(previousDirection).getConcentration(ChemicalType.GREEN) &&
-                        currentCell.getConcentration(ChemicalType.GREEN) > neighborMap.get(getOtherDirectionList(previousDirection).get(2)).getConcentration(ChemicalType.GREEN)) {
-                    greenConcentration = currentCell.getConcentration(ChemicalType.GREEN);
-                }
-
-                if (redConcentration > greenConcentration) {
-                    System.out.println("red local maximum");
-                    System.out.println(redConcentration);
-                    System.out.println(greenConcentration);
-                    System.out.println("previous Direction:" + previousDirection.toString());
-                    DirectionType newDirection = getOtherDirectionList(previousDirection).get(0);
-                    System.out.println("newDirection:" + newDirection.toString());
-                    ChemicalCell nextChemicalCell = neighborMap.get(newDirection);
-                    if (nextChemicalCell.isBlocked()) {
-                        System.out.println("next cell is blocked");
-                        newDirection = circumventBlocks(previousState, currentCell, neighborMap);
-                    }
-                    move.currentState = setCounterInCurrentState(previousState, false);
-                    move.currentState = setDirectionBitsInCurrentState(move.currentState, newDirection);
-                    move.directionType = newDirection;
-                    sensedChemical = true;
-                } else if (redConcentration < greenConcentration) {
-                    System.out.println("green local maximum");
-                    System.out.println(redConcentration);
-                    System.out.println(greenConcentration);
-                    System.out.println("previous Direction:" + previousDirection.toString());
-                    DirectionType newDirection = getOtherDirectionList(previousDirection).get(1);
-                    System.out.println("newDirection:" + newDirection.toString());
-                    ChemicalCell nextChemicalCell = neighborMap.get(newDirection);
-                    if (nextChemicalCell.isBlocked()) {
-                        System.out.println("next cell is blocked");
-                        newDirection = circumventBlocks(previousState, currentCell, neighborMap);
-                    }
-                    move.currentState = setCounterInCurrentState(previousState, false);
-                    move.currentState = setDirectionBitsInCurrentState(move.currentState, newDirection);
-                    move.directionType = newDirection;
-                    sensedChemical = true;
-                }
+                move.currentState = setCounterInCurrentState(previousState, false);
+                move.currentState = setDirectionBitsInCurrentState(move.currentState, newDirection);
+                move.directionType = newDirection;
+                sensedChemical = true;
+            }
+            else if (blueConcentration > redConcentration && blueConcentration > greenConcentration) {
+                System.out.println("blue local maximum");
+                System.out.println(redConcentration);
+                System.out.println(greenConcentration);
+                System.out.println(blueConcentration);
+                System.out.println("previous Direction:" + previousDirection.toString());
+                DirectionType newDirection = getOtherDirectionList(previousDirection).get(2);
+                System.out.println("newDirection:" + newDirection.toString());
+                move.currentState = setCounterInCurrentState(previousState, false);
+                move.currentState = setDirectionBitsInCurrentState(move.currentState, newDirection);
+                move.directionType = newDirection;
+                sensedChemical = true;
             }
 
             if (sensedChemical == false) {

@@ -124,7 +124,7 @@ public class Controller extends chemotaxis.sim.Controller {
                 Node node = this.getShortestPathLeastTurns(location, grid, beforeDirection);
                 ArrayList<Point> path = node.getPath();
                 nextPosition = path.get(1);
-                System.out.println("agent" + String.valueOf(i) + "go unexpected way, now location:" + location.toString());
+                System.out.println("agent" + String.valueOf(i) + "go unexpected way, now location:" + location.toString() + "before direction" + beforeDirection.toString());
                 System.out.println("now position index:" + String.valueOf(beforeIndex + 1) + ",expected:" + expectPath.toString());
                 System.out.println("new path:" + path.toString());
                 ArrayList<Point> newPath = new ArrayList<Point>(expectPath.subList(0, beforeIndex + 1));

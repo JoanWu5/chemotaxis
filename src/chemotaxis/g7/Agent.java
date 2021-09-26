@@ -352,6 +352,13 @@ public class Agent extends chemotaxis.sim.Agent {
                 move.currentState = setDirectionBitsInCurrentState(move.currentState, newDirection);
                 move.directionType = newDirection;
                 sensedChemical = true;
+            } else if ((blueConcentration == redConcentration && blueConcentration > 0) ||
+                    (blueConcentration == greenConcentration && blueConcentration > 0) ||
+                    (redConcentration == greenConcentration && redConcentration > 0)) {
+                move.currentState = setCounterInCurrentState(previousState, false);
+                move.currentState = setDirectionBitsInCurrentState(move.currentState, previousDirection);
+                move.directionType = previousDirection;
+                sensedChemical = true;
             }
 
             if (sensedChemical == false) {

@@ -11,7 +11,7 @@ import chemotaxis.sim.ChemicalCell.ChemicalType;
 import chemotaxis.sim.Move;
 import chemotaxis.sim.SimPrinter;
 
-public class Agent extends chemotaxis.sim.Agent {
+public class Agent_v2 extends chemotaxis.sim.Agent {
 
     /**
      * Agent constructor
@@ -19,7 +19,7 @@ public class Agent extends chemotaxis.sim.Agent {
      * @param simPrinter  simulation printer
      *
      */
-    public Agent(SimPrinter simPrinter) {
+    public Agent_v2(SimPrinter simPrinter) {
         super(simPrinter);
     }
 

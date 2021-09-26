@@ -72,8 +72,14 @@ public class Controller extends chemotaxis.sim.Controller {
 
         ArrayList<Integer> result = new ArrayList<Integer>();
         Map<Point, Integer> agentTurnDirections = new HashMap<>();
-
-        for (int i = 0; i < Math.min(locations.size(), agentGoal * 2); i++) {
+        int agentAlreadyInGoal = 0;
+        for (int i = 0; i < locations.size(); i++) {
+            Point location = locations.get(i);
+            if (location.equals(start)) {
+                agentAlreadyInGoal += 1;
+            }
+        }
+        for (int i = 0; i < Math.min(locations.size(), agentGoal * 2 + agentAlreadyInGoal * 2); i++) {
             Point location = new Point(locations.get(i).x - 1, locations.get(i).y - 1);
             int numberOfAvailableNeighbours = findNumberOfAvailableNeighbours(location, grid);
             Log.writeToLogFile("Agent" + (i) + " number of available neighbours:" + numberOfAvailableNeighbours);
@@ -160,10 +166,10 @@ public class Controller extends chemotaxis.sim.Controller {
             int supposeTurnDirection = this.getChemicalType(beforeDirection, nowDirection);
             if (location.x != start.x - 1 || location.y != start.y - 1) {
                 if (supposeTurnDirection == 4)
-                    if (beforeDirection == DirectionType.CURRENT)
-                        supposeTurnDirection = 3;
-                    else
+                    if (beforeDirection != DirectionType.CURRENT)
                         continue;
+                    else
+                        supposeTurnDirection = 3;
             }
 
             if (nowDirection == beforeDirection) {

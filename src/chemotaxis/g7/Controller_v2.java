@@ -72,8 +72,14 @@ public class Controller_v2 extends chemotaxis.sim.Controller {
 
         ArrayList<Integer> result = new ArrayList<Integer>();
         Map<Point, Integer> agentTurnDirections = new HashMap<>();
-
+        int agentAlreadyInGoal = 0;
         for (int i = 0; i < locations.size(); i++) {
+            Point location = locations.get(i);
+            if (location.equals(start)) {
+                agentAlreadyInGoal += 1;
+            }
+        }
+        for (int i = 0; i < Math.min(locations.size(), agentGoal * 2 + agentAlreadyInGoal * 2); i++) {
             Point location = new Point(locations.get(i).x - 1, locations.get(i).y - 1);
             int numberOfAvailableNeighbours = findNumberOfAvailableNeighbours(location, grid);
             Log.writeToLogFile("Agent" + (i) + " number of available neighbours:" + numberOfAvailableNeighbours);
@@ -124,7 +130,7 @@ public class Controller_v2 extends chemotaxis.sim.Controller {
                 Node node = this.getShortestPathLeastTurns(location, grid, beforeDirection);
                 ArrayList<Point> path = node.getPath();
                 nextPosition = path.get(1);
-                System.out.println("agent" + String.valueOf(i) + "go unexpected way, now location:" + location.toString());
+                System.out.println("agent" + String.valueOf(i) + "go unexpected way, now location:" + location.toString() + "before direction" + beforeDirection.toString());
                 System.out.println("now position index:" + String.valueOf(beforeIndex + 1) + ",expected:" + expectPath.toString());
                 System.out.println("new path:" + path.toString());
                 ArrayList<Point> newPath = new ArrayList<Point>(expectPath.subList(0, beforeIndex + 1));
@@ -139,7 +145,7 @@ public class Controller_v2 extends chemotaxis.sim.Controller {
 
             // if agent in the start position,
             // make sure applying a nearby blue chemical won't affect the agent in the cell if there is an agent here
-            if (location.x == start.x - 1 || location.y == start.y - 1) {
+            if (location.x == start.x - 1 && location.y == start.y - 1) {
                 Point anotherAgent = new Point(nextPosition.x + 1, nextPosition.y + 1);
                 if (locations.contains(anotherAgent)) {
                     int intendTurnDirection = this.getIntendTurnDirection(grid, nextPosition, nowDirection);
@@ -158,6 +164,13 @@ public class Controller_v2 extends chemotaxis.sim.Controller {
 
             int intendTurnDirection = this.getIntendTurnDirection(grid, location, beforeDirection);
             int supposeTurnDirection = this.getChemicalType(beforeDirection, nowDirection);
+            if (location.x != start.x - 1 || location.y != start.y - 1) {
+                if (supposeTurnDirection == 4)
+                    if (beforeDirection != DirectionType.CURRENT)
+                        continue;
+                    else
+                        supposeTurnDirection = 3;
+            }
 
             if (nowDirection == beforeDirection) {
                 if (intendTurnDirection != 0) {
@@ -611,7 +624,10 @@ public class Controller_v2 extends chemotaxis.sim.Controller {
             if (maxConcentration != colorChemical.get(0)) {
                 maxLocal.add((double) 0);
             } else {
-                maxLocal.add(maxConcentration);
+                if (maxLocal == chemicalConcentrations.get(1) || maxLocal == chemicalConcentrations.get(2))
+                    maxLocal.add((double) 0);
+                else
+                    maxLocal.add(maxConcentration);
             }
         }
 

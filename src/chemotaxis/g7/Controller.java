@@ -160,7 +160,10 @@ public class Controller extends chemotaxis.sim.Controller {
             int supposeTurnDirection = this.getChemicalType(beforeDirection, nowDirection);
             if (location.x != start.x - 1 || location.y != start.y - 1) {
                 if (supposeTurnDirection == 4)
-                    continue;
+                    if (beforeDirection == DirectionType.CURRENT)
+                        supposeTurnDirection = 3;
+                    else
+                        continue;
             }
 
             if (nowDirection == beforeDirection) {

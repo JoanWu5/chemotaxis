@@ -205,7 +205,7 @@ public class Agent extends chemotaxis.sim.Agent {
          * indicates which direction the agent should go in case he meets a block
          */
         DirectionType previousDirection = getPrevDirection(previousState);
-
+        ChemicalCell previousDirectionCell = neighborMap.get(previousDirection);
         DirectionType rightDirection = getOtherDirectionList(previousDirection).get(0);
         ChemicalCell rightCell = neighborMap.get(rightDirection);
         DirectionType leftDirection = getOtherDirectionList(previousDirection).get(1);
@@ -213,7 +213,10 @@ public class Agent extends chemotaxis.sim.Agent {
         DirectionType oppositeDirection = getOtherDirectionList(previousDirection).get(2);
         ChemicalCell oppositeCell = neighborMap.get(oppositeDirection);
 
-        if (!(rightCell.isBlocked())) {
+        if  (!(previousDirectionCell.isBlocked())) {
+            return previousDirection;
+        }
+        else if (!(rightCell.isBlocked())) {
             return rightDirection;
         }
         else if (!(leftCell.isBlocked())) {
@@ -306,6 +309,11 @@ public class Agent extends chemotaxis.sim.Agent {
                 if (redConcentration > greenConcentration) {
                     System.out.println("red local maximum");
                     DirectionType newDirection = getOtherDirectionList(previousDirection).get(0);
+                    ChemicalCell nextChemicalCell = neighborMap.get(newDirection);
+                    if (nextChemicalCell.isBlocked()) {
+                        System.out.println("next cell is blocked");
+                        newDirection = circumventBlocks(previousState, currentCell, neighborMap);
+                    }
                     move.currentState = setCounterInCurrentState(previousState, false);
                     move.currentState = setDirectionBitsInCurrentState(move.currentState, newDirection);
                     move.directionType = newDirection;
@@ -313,6 +321,11 @@ public class Agent extends chemotaxis.sim.Agent {
                 } else if (redConcentration < greenConcentration) {
                     System.out.println("green local maximum");
                     DirectionType newDirection = getOtherDirectionList(previousDirection).get(1);
+                    ChemicalCell nextChemicalCell = neighborMap.get(newDirection);
+                    if (nextChemicalCell.isBlocked()) {
+                        System.out.println("next cell is blocked");
+                        newDirection = circumventBlocks(previousState, currentCell, neighborMap);
+                    }
                     move.currentState = setCounterInCurrentState(previousState, false);
                     move.currentState = setDirectionBitsInCurrentState(move.currentState, newDirection);
                     move.directionType = newDirection;

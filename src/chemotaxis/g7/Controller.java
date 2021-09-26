@@ -566,16 +566,16 @@ public class Controller extends chemotaxis.sim.Controller {
         return newDirections;
     }
 
-    // return an array contains whether green/red/blue is local maximum
+    // return integer to indicate which directionType it will turn
     private Integer getIntendTurnDirection(ChemicalCell[][] grid, Point currentPosition, DirectionType beforeDirection) {
         ArrayList<ChemicalType> chemicals = new ArrayList<ChemicalType>();
         ChemicalCell currentCell;
         int numberOfColors = 3;
 
-        // row: green/red/blue in the beforeDirection: col: previousPosition->currentPosition->nextPosition
+        // row: green->red->blue col: currentPosition->previousPosition->nextPosition
         ArrayList<ArrayList<Double>> chemicalConcentrations = new ArrayList<ArrayList<Double>>();
 
-        // initial result
+
         for (int i = 0; i < numberOfColors; i++) {
             chemicalConcentrations.add(new ArrayList<Double>());
         }
@@ -625,7 +625,7 @@ public class Controller extends chemotaxis.sim.Controller {
         ArrayList<Double> maxLocal = new ArrayList<Double>();
         int color = 0;
         int equal = 0;
-
+        // we will find the local maximum in the previousDirection line
         for (int i = 0; i < numberOfColors; i++) {
             ArrayList<Double> colorChemical = chemicalConcentrations.get(i);
             double maxConcentration = Collections.max(colorChemical);

@@ -308,7 +308,11 @@ public class Agent extends chemotaxis.sim.Agent {
 
                 if (redConcentration > greenConcentration) {
                     System.out.println("red local maximum");
+                    System.out.println(redConcentration);
+                    System.out.println(greenConcentration);
+                    System.out.println("previous Direction:" + previousDirection.toString());
                     DirectionType newDirection = getOtherDirectionList(previousDirection).get(0);
+                    System.out.println("newDirection:" + newDirection.toString());
                     ChemicalCell nextChemicalCell = neighborMap.get(newDirection);
                     if (nextChemicalCell.isBlocked()) {
                         System.out.println("next cell is blocked");
@@ -320,7 +324,11 @@ public class Agent extends chemotaxis.sim.Agent {
                     sensedChemical = true;
                 } else if (redConcentration < greenConcentration) {
                     System.out.println("green local maximum");
+                    System.out.println(redConcentration);
+                    System.out.println(greenConcentration);
+                    System.out.println("previous Direction:" + previousDirection.toString());
                     DirectionType newDirection = getOtherDirectionList(previousDirection).get(1);
+                    System.out.println("newDirection:" + newDirection.toString());
                     ChemicalCell nextChemicalCell = neighborMap.get(newDirection);
                     if (nextChemicalCell.isBlocked()) {
                         System.out.println("next cell is blocked");

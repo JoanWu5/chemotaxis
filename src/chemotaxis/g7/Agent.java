@@ -291,14 +291,14 @@ public class Agent extends chemotaxis.sim.Agent {
                 double greenConcentration = 0.0;
 
                 if (currentCell.getConcentration(ChemicalType.RED) > 0.001 &&
-                        currentCell.getConcentration(ChemicalType.RED) >= neighborMap.get(previousDirection).getConcentration(ChemicalType.RED) &&
-                        currentCell.getConcentration(ChemicalType.RED) >= neighborMap.get(getOtherDirectionList(previousDirection).get(2)).getConcentration(ChemicalType.RED)) {
+                        currentCell.getConcentration(ChemicalType.RED) > neighborMap.get(previousDirection).getConcentration(ChemicalType.RED) &&
+                        currentCell.getConcentration(ChemicalType.RED) > neighborMap.get(getOtherDirectionList(previousDirection).get(2)).getConcentration(ChemicalType.RED)) {
                     redConcentration = currentCell.getConcentration(ChemicalType.RED);
                 }
 
                 if (currentCell.getConcentration(ChemicalType.GREEN) > 0.001 &&
-                        currentCell.getConcentration(ChemicalType.GREEN) >= neighborMap.get(previousDirection).getConcentration(ChemicalType.GREEN) &&
-                        currentCell.getConcentration(ChemicalType.GREEN) >= neighborMap.get(getOtherDirectionList(previousDirection).get(2)).getConcentration(ChemicalType.GREEN)) {
+                        currentCell.getConcentration(ChemicalType.GREEN) > neighborMap.get(previousDirection).getConcentration(ChemicalType.GREEN) &&
+                        currentCell.getConcentration(ChemicalType.GREEN) > neighborMap.get(getOtherDirectionList(previousDirection).get(2)).getConcentration(ChemicalType.GREEN)) {
                     greenConcentration = currentCell.getConcentration(ChemicalType.GREEN);
                 }
 

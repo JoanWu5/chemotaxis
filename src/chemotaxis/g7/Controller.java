@@ -73,7 +73,7 @@ public class Controller extends chemotaxis.sim.Controller {
         ArrayList<Integer> result = new ArrayList<Integer>();
         Map<Point, Integer> agentTurnDirections = new HashMap<>();
 
-        for (int i = 0; i < locations.size(); i++) {
+        for (int i = 0; i < Math.min(locations.size(), agentGoal * 2); i++) {
             Point location = new Point(locations.get(i).x - 1, locations.get(i).y - 1);
             int numberOfAvailableNeighbours = findNumberOfAvailableNeighbours(location, grid);
             Log.writeToLogFile("Agent" + (i) + " number of available neighbours:" + numberOfAvailableNeighbours);
@@ -139,7 +139,7 @@ public class Controller extends chemotaxis.sim.Controller {
 
             // if agent in the start position,
             // make sure applying a nearby blue chemical won't affect the agent in the cell if there is an agent here
-            if (location.x == start.x - 1 || location.y == start.y - 1) {
+            if (location.x == start.x - 1 && location.y == start.y - 1) {
                 Point anotherAgent = new Point(nextPosition.x + 1, nextPosition.y + 1);
                 if (locations.contains(anotherAgent)) {
                     int intendTurnDirection = this.getIntendTurnDirection(grid, nextPosition, nowDirection);
@@ -158,6 +158,10 @@ public class Controller extends chemotaxis.sim.Controller {
 
             int intendTurnDirection = this.getIntendTurnDirection(grid, location, beforeDirection);
             int supposeTurnDirection = this.getChemicalType(beforeDirection, nowDirection);
+            if (location.x != start.x - 1 || location.y != start.y - 1) {
+                if (supposeTurnDirection == 4)
+                    continue;
+            }
 
             if (nowDirection == beforeDirection) {
                 if (intendTurnDirection != 0) {
@@ -611,7 +615,10 @@ public class Controller extends chemotaxis.sim.Controller {
             if (maxConcentration != colorChemical.get(0)) {
                 maxLocal.add((double) 0);
             } else {
-                maxLocal.add(maxConcentration);
+                if (maxLocal == chemicalConcentrations.get(1) || maxLocal == chemicalConcentrations.get(2))
+                    maxLocal.add((double) 0);
+                else
+                    maxLocal.add(maxConcentration);
             }
         }
 

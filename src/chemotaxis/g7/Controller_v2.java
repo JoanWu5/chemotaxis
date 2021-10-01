@@ -50,18 +50,17 @@ public class Controller_v2 extends chemotaxis.sim.Controller {
      */
     public Controller_v2(Point start, Point target, Integer size, ChemicalCell[][] grid, Integer simTime, Integer budget, Integer seed, SimPrinter simPrinter, Integer agentGoal, Integer spawnFreq) {
         super(start, target, size, grid, simTime, budget, seed, simPrinter, agentGoal, spawnFreq);
+        // compute the shortest path form start to target in the beginning to save time
         this.initialAgentPath();
     }
 
     private void initialAgentPath() {
         Point startNode = new Point(start.x - 1, start.y - 1);
-        initialPath = this.getShortestPathLeastTurns(startNode, grid, DirectionType.CURRENT);
+        initialPath = this.getFourDirectionShortestPath(startNode, grid, DirectionType.CURRENT);
     }
 
     // weigh the points, not must be the closest point to the target
     // I think for now we can just choose the point which is the closest of all the points that need to turn
-    // and maybe in the future:
-    // we can use two chemicals at the same point to guide many agents
     // we can take chemicals diffusion into consideration
     public ArrayList<Integer> chooseOnePointNeedToTurn(ArrayList<Point> locations, ChemicalCell[][] grid) {
         int chooseIdx = -1;
@@ -73,18 +72,19 @@ public class Controller_v2 extends chemotaxis.sim.Controller {
         ArrayList<Integer> result = new ArrayList<Integer>();
         Map<Point, Integer> agentTurnDirections = new HashMap<>();
         int agentAlreadyInGoal = 0;
-        for (int i = 0; i < locations.size(); i++) {
-            Point location = locations.get(i);
-            if (location.equals(start)) {
+        for (Point location : locations) {
+            if (location.equals(target)) {
                 agentAlreadyInGoal += 1;
             }
         }
+        // we can only care about (agentGoal + agentAlreadyInGoal) * 2 agents in case of wasting chemicals
         for (int i = 0; i < Math.min(locations.size(), agentGoal * 2 + agentAlreadyInGoal * 2); i++) {
             Point location = new Point(locations.get(i).x - 1, locations.get(i).y - 1);
             int numberOfAvailableNeighbours = findNumberOfAvailableNeighbours(location, grid);
             Log.writeToLogFile("Agent" + (i) + " number of available neighbours:" + numberOfAvailableNeighbours);
 
             // get expected path from agentPaths
+            // we use agentPaths to store each agents' now path connected with supposed path instead of computing the shortest path every time
             Node beforeNode = new Node();
             if (location.x == target.x - 1 && location.y == target.y - 1) {
                 continue;
@@ -110,12 +110,12 @@ public class Controller_v2 extends chemotaxis.sim.Controller {
             int beforeIndex = beforeNode.getIndex();
             ArrayList<Point> expectPath = beforeNode.getPath();
 
-            // if currentLocation not equal to start
+            // if currentLocation not equal to start, we should compute the before direction
             if (location.x != start.x - 1 || location.y != start.y - 1) {
                 Point previousLocation = expectPath.get(beforeIndex);
                 beforeDirection = this.getMoveDirections(previousLocation, location);
             }
-
+            // the nextPosition means the expected next position
             Point nextPosition = new Point();
 
             Point expectedPosition = expectPath.get(beforeIndex + 1);
@@ -126,8 +126,21 @@ public class Controller_v2 extends chemotaxis.sim.Controller {
                 nextPosition = expectPath.get(beforeIndex + 2);
                 distanceToTarget = expectPath.size() - beforeIndex - 1;
             } else {
-                // the agent goes on the unexpected way
-                Node node = this.getShortestPathLeastTurns(location, grid, beforeDirection);
+                // the agent goes on the unexpected way, we need to compute the shortest path again and renew the agentsPath map
+                Node node;
+                if (beforeDirection == DirectionType.CURRENT) {
+                    Point beforebeforeLocation = location;
+                    for (int k = beforeIndex; k >= 0; k --) {
+                        beforebeforeLocation = expectPath.get(k);
+                        if (!beforebeforeLocation.equals(location)) {
+                            break;
+                        }
+                    }
+                    DirectionType beforebeforeDirection = this.getMoveDirections(beforebeforeLocation, location);
+                    node = this.getShortestPathLeastTurns(location, grid, beforebeforeDirection);
+                } else {
+                    node = this.getShortestPathLeastTurns(location, grid, beforeDirection);
+                }
                 ArrayList<Point> path = node.getPath();
                 nextPosition = path.get(1);
                 System.out.println("agent" + String.valueOf(i) + "go unexpected way, now location:" + location.toString() + "before direction" + beforeDirection.toString());
@@ -138,13 +151,14 @@ public class Controller_v2 extends chemotaxis.sim.Controller {
                 beforeNode.setPath(newPath);
                 distanceToTarget = path.size() - 1;
             }
+            // refresh the index so that we know agent goes on to which step
             beforeNode.setIndex(beforeIndex + 1);
             agentsPath.put(i, beforeNode);
-
             DirectionType nowDirection = this.getMoveDirections(location, nextPosition);
 
             // if agent in the start position,
             // make sure applying a nearby blue chemical won't affect the agent in the cell if there is an agent here
+            // if it is affecting another agent, we should apply a blue chemical but let the agent go random step
             if (location.x == start.x - 1 && location.y == start.y - 1) {
                 Point anotherAgent = new Point(nextPosition.x + 1, nextPosition.y + 1);
                 if (locations.contains(anotherAgent)) {
@@ -161,17 +175,56 @@ public class Controller_v2 extends chemotaxis.sim.Controller {
                     }
                 }
             }
-
-            int intendTurnDirection = this.getIntendTurnDirection(grid, location, beforeDirection);
-            int supposeTurnDirection = this.getChemicalType(beforeDirection, nowDirection);
-            if (location.x != start.x - 1 || location.y != start.y - 1) {
-                if (supposeTurnDirection == 4)
-                    if (beforeDirection != DirectionType.CURRENT)
-                        continue;
-                    else
-                        supposeTurnDirection = 3;
+            // intendTurnDirection means how the chemical will affect the agent,
+            // while supposeTurnDirection means which direction we expect it to turn
+            // if the two is equal, which means we don't need to apply a chemical
+            int intendTurnDirection;
+            int supposeTurnDirection;
+            if ((location.x == start.x - 1 && location.y == start.y - 1) || beforeDirection != DirectionType.CURRENT) {
+                intendTurnDirection = this.getIntendTurnDirection(grid, location, beforeDirection);
+                supposeTurnDirection = this.getChemicalType(beforeDirection, nowDirection);
+            } else{
+                Point beforebeforeLocation = location;
+                for (int k = beforeIndex; k >= 0; k --) {
+                    beforebeforeLocation = expectPath.get(k);
+                    if (!beforebeforeLocation.equals(location)) {
+                        break;
+                    }
+                }
+                DirectionType beforebeforeDirection = this.getMoveDirections(beforebeforeLocation, location);
+                intendTurnDirection = this.getIntendTurnDirection(grid, location, beforebeforeDirection);
+                supposeTurnDirection = this.getChemicalType(beforebeforeDirection, nowDirection);
+                System.out.println("agent" + i + beforebeforeDirection + "stuck, intend to move" + intendTurnDirection + "suppose:" + supposeTurnDirection);
             }
 
+            if ((location.x != start.x -1 || location.y != start.y - 1) && beforeDirection == DirectionType.CURRENT) {
+                System.out.println(String.valueOf(i) + "stopped, now:" + nowDirection.toString());
+                System.out.println("intend:" + intendTurnDirection + "suppose:" + supposeTurnDirection);
+                Point beforebeforeLocation = location;
+                int k;
+                for (k = beforeIndex; k >= 0; k --) {
+                    beforebeforeLocation = expectPath.get(k);
+                    if (!beforebeforeLocation.equals(location)) {
+                        break;
+                    }
+                }
+                if (beforeIndex - k  >= 3 && supposeTurnDirection != 4) {
+                    supposeTurnDirection = 3;
+                }
+            }
+            // if the location isn't the start point, and we find that the agent goes blocked(beforeDirection = CURRENT),
+            // we will know that there must be two agents want to the opposite way,
+            // so we apply a blue chemical to let the agent go opposite to avoid the collision
+            if (location.x != start.x - 1 || location.y != start.y - 1) {
+                if (supposeTurnDirection == 4)
+                    continue;
+//                    if (beforeDirection != DirectionType.CURRENT || intendTurnDirection != 4)
+//                        continue;
+//                    else
+//                        supposeTurnDirection = 3;
+            }
+            // if expectedDirection(nowDirection) equals to the before direction, but it tries to turn,
+            // actually we need to fix it afterwards, afraid of using a chemical can cause other agents go unexpectedly
             if (nowDirection == beforeDirection) {
                 if (intendTurnDirection != 0) {
                     System.out.println("agent" + String.valueOf(i) + "should go" + String.valueOf(supposeTurnDirection));
@@ -183,14 +236,18 @@ public class Controller_v2 extends chemotaxis.sim.Controller {
                     if (!isOppositeDirection(beforeDirection, nowDirection) && numberOfAvailableNeighbours == 2)
                         continue;
 
-                    if (isOppositeDirection(beforeDirection, nowDirection) && numberOfAvailableNeighbours == 3)
+                    if (isOppositeDirection(beforeDirection, nowDirection) && numberOfAvailableNeighbours == 1)
                         continue;
+                } else {
+                    if (numberOfAvailableNeighbours == 1) {
+                        continue;
+                    }
                 }
 
                 if (intendTurnDirection == supposeTurnDirection) {
                     continue;
                 }
-
+                // we always choose the one that needs to turn with the closet distance
                 if (distance > distanceToTarget) {
                     distance = distanceToTarget;
                     chooseIdx = i;
@@ -248,7 +305,7 @@ public class Controller_v2 extends chemotaxis.sim.Controller {
         ChemicalPlacement chemicalPlacement = new ChemicalPlacement();
         // choose a point that needs to turn and apply the chemicals
         ArrayList<Integer> result = this.chooseOnePointNeedToTurn(locations, grid);
-        System.out.println("the result of applyChemicals are" + result.toString());
+        System.out.println("the result of applyChemicals is" + result.toString());
         if (result.isEmpty()) {
             previousLocations = locations;
             return chemicalPlacement;
@@ -284,6 +341,27 @@ public class Controller_v2 extends chemotaxis.sim.Controller {
         chemicalPlacement.chemicals = chemicals;
         previousLocations = locations;
         return chemicalPlacement;
+    }
+
+    private Node getFourDirectionShortestPath(Point start, ChemicalCell[][] grid, DirectionType previousDirection) {
+        Node result = new Node(start, Integer.MAX_VALUE);
+        if (previousDirection == DirectionType.CURRENT) {
+            for (MoveDirection direction: directions) {
+                Node tempResult = this.getShortestPathLeastTurns(start, grid, direction.directionType);
+                if (result.getTurns() == Integer.MAX_VALUE || result.getPath().size() > tempResult.getPath().size()) {
+                    result.setTurns(tempResult.getTurns());
+                    result.setPath(tempResult.getPath());
+                } else if (result.getPath().size() == tempResult.getPath().size()) {
+                    if (result.getTurns() > tempResult.getTurns()) {
+                        result.setTurns(tempResult.getTurns());
+                        result.setPath(tempResult.getPath());
+                    }
+                }
+            }
+        } else {
+            result = this.getShortestPathLeastTurns(start, grid, previousDirection);
+        }
+        return result;
     }
 
     // use queue to do BFS to find the shortest path from current position to the target
@@ -558,16 +636,16 @@ public class Controller_v2 extends chemotaxis.sim.Controller {
         return newDirections;
     }
 
-    // return an array contains whether green/red/blue is local maximum
+    // return integer to indicate which directionType it will turn
     private Integer getIntendTurnDirection(ChemicalCell[][] grid, Point currentPosition, DirectionType beforeDirection) {
         ArrayList<ChemicalType> chemicals = new ArrayList<ChemicalType>();
         ChemicalCell currentCell;
         int numberOfColors = 3;
 
-        // row: green/red/blue in the beforeDirection: col: previousPosition->currentPosition->nextPosition
+        // row: green->red->blue col: currentPosition->previousPosition->nextPosition
         ArrayList<ArrayList<Double>> chemicalConcentrations = new ArrayList<ArrayList<Double>>();
 
-        // initial result
+
         for (int i = 0; i < numberOfColors; i++) {
             chemicalConcentrations.add(new ArrayList<Double>());
         }
@@ -617,7 +695,7 @@ public class Controller_v2 extends chemotaxis.sim.Controller {
         ArrayList<Double> maxLocal = new ArrayList<Double>();
         int color = 0;
         int equal = 0;
-
+        // we will find the local maximum in the previousDirection line
         for (int i = 0; i < numberOfColors; i++) {
             ArrayList<Double> colorChemical = chemicalConcentrations.get(i);
             double maxConcentration = Collections.max(colorChemical);
